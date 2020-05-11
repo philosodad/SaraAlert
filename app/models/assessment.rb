@@ -77,4 +77,24 @@ class Assessment < ApplicationRecord
   def get_reported_symptom_by_name(symptom_name)
     reported_condition&.symptoms&.select { |symp| symp.name == symptom_name }&.first || nil
   end
+
+  # Returns a representative FHIR::QuestionnaireResponse for an instance of a Sara Alert Assessment.
+  # https://www.hl7.org/fhir/observation.html
+  def as_fhir
+    FHIR::QuestionnaireResponse.new(
+      meta: FHIR::Meta.new(lastUpdated: updated_at.strftime('%FT%T%:z')),
+      id: id,
+      subject: FHIR::Reference.new(reference: "Patient/#{patient_id}"),
+      status: 'completed',
+      item: reported_condition.symptoms.collect do |s|
+        if s.type == 'IntegerSymptom'
+          FHIR::QuestionnaireResponse::Item.new(text: s.name, answer: FHIR::QuestionnaireResponse::Item::Answer.new(valueInteger: s.int_value))
+        elsif s.type == 'FloatSymptom'
+          FHIR::QuestionnaireResponse::Item.new(text: s.name, answer: FHIR::QuestionnaireResponse::Item::Answer.new(valueDecimal: s.float_value))
+        elsif s.type == 'BoolSymptom'
+          FHIR::QuestionnaireResponse::Item.new(text: s.name, answer: FHIR::QuestionnaireResponse::Item::Answer.new(valueBoolean: s.bool_value))
+        end
+      end
+    )
+  end
 end

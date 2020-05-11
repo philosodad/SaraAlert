@@ -492,6 +492,72 @@ class Patient < ApplicationRecord
     age
   end
 
+  # Returns a representative FHIR::Patient for an instance of a Sara Alert Patient. Uses US Core
+  # extensions for sex, race, and ethnicity.
+  # https://www.hl7.org/fhir/us/core/StructureDefinition-us-core-patient.html
+  def as_fhir
+    FHIR::Patient.new(
+      meta: FHIR::Meta.new(lastUpdated: updated_at.strftime('%FT%T%:z')),
+      id: id,
+      name: [ FHIR::HumanName.new( given: [first_name, middle_name].reject(&:blank?), family: last_name ) ],
+      telecom: [
+        primary_telephone ? FHIR::ContactPoint.new( system: 'phone', value: primary_telephone, rank: 1 ) : nil,
+        secondary_telephone ? FHIR::ContactPoint.new( system: 'phone', value: secondary_telephone, rank: 2 ) : nil,
+        email ? FHIR::ContactPoint.new( system: 'email', value: email, rank: 1 ) : nil
+      ].reject(&:nil?),
+      birthDate: date_of_birth&.strftime('%F'),
+      address: [
+        FHIR::Address.new(
+          line: [address_line_1, address_line_2].reject(&:blank?),
+          city: address_city,
+          district: address_county,
+          state: address_state,
+          postalCode: address_zip
+        )
+      ],
+      language: [
+        language_coding(primary_language) ? FHIR::Patient::Communication.new(
+          language: FHIR::CodeableConcept.new( coding: [ language_coding(primary_language) ] ),
+          preferred: interpretation_required
+        ) : nil
+      ].reject(&:nil?),
+      extension: [
+        us_core_race(white, black_or_african_american, american_indian_or_alaska_native, asian, native_hawaiian_or_other_pacific_islander),
+        us_core_ethnicity(ethnicity),
+        us_core_birthsex(sex)
+      ].reject(&:nil?)
+    )
+  end
+
+  # Create a hash of atttributes that corresponds to a Sara Alert Patient (and can be used to
+  # create new ones, or update existing ones), using the given FHIR::Patient.
+  def self.from_fhir(patient)
+    {
+      first_name: patient&.name&.first&.given&.first,
+      middle_name: patient&.name&.first&.given&.second,
+      last_name: patient&.name&.first&.family,
+      primary_telephone: Phonelib.parse(patient&.telecom&.select{ |t| t&.system == 'phone' }&.first&.value, 'US').full_e164,
+      secondary_telephone: Phonelib.parse(patient&.telecom&.select{ |t| t&.system == 'phone' }&.second&.value, 'US').full_e164,
+      email: patient&.telecom&.select{ |t| t&.system == 'email' }&.first&.value,
+      date_of_birth: patient&.birthDate,
+      address_line_1: patient&.address&.first&.line&.first,
+      address_line_2: patient&.address&.first&.line&.second,
+      address_city: patient&.address&.first&.city,
+      address_county: patient&.address&.first&.district,
+      address_state: patient&.address&.first&.state,
+      address_zip: patient&.address&.first&.postalCode,
+      primary_language: patient&.language&.first&.dig('language', 'coding')&.first&.dig('display'),
+      interpretation_required: patient&.language&.first&.dig('preferred'),
+      white: PatientHelper.has_race_code(patient, '2106-3'),
+      black_or_african_american: PatientHelper.has_race_code(patient, '2054-5'),
+      american_indian_or_alaska_native: PatientHelper.has_race_code(patient, '1002-5'),
+      asian: PatientHelper.has_race_code(patient, '2028-9'),
+      native_hawaiian_or_other_pacific_islander: PatientHelper.has_race_code(patient, '2076-8'),
+      ethnicity: PatientHelper.ethnicity(patient),
+      sex: PatientHelper.birthsex(patient)
+    }
+  end
+
   # Information about this subject (that is useful in a linelist)
   def linelist
     {

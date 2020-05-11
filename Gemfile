@@ -25,11 +25,12 @@ gem 'sidekiq'
 # Ancestry for managing trees
 gem 'ancestry'
 
-# Devise, and rolify for auth
+# Devise, rolify for auth, doorkeeper for API
 gem 'devise'
 gem 'devise-authy'
 gem 'devise-security'
 gem 'rolify'
+gem 'doorkeeper'
 
 # Better React integration
 gem 'react-rails'
@@ -73,6 +74,9 @@ gem 'sentry-raven'
 # Better phone number handling
 gem 'phonelib'
 
+# FHIR models
+gem 'fhir_models'
+
 group :development, :test do
   gem 'brakeman'
   gem 'byebug', platforms: %i[mri mingw x64_mingw]
@@ -92,6 +96,8 @@ end
 group :test do
   gem 'capybara', '>= 2.15'
   gem 'minitest-retry'
+  gem 'mocha'
+  gem 'rack-test'
   gem 'selenium-webdriver'
   gem 'simplecov'
   gem 'simplecov-lcov'

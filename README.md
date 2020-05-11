@@ -90,14 +90,14 @@ bundle exec whenever --update-crontab
 
 ##### Periodic Tasks
   These tasks are configured to run periodically. Their run timing parameters are specified in `config/schedule.rb`
-  * `CloseSubjectsJob` 
+  * `CloseSubjectsJob`
     - Active job that closes cases that meet duration/symptomatic conditions
   * `PurgeJob`
       - Active job that redacts PII of cases that have been closed for N many days
   * `rake mailers:send_purge_warning`
       - Send warning to users of upcoming PurgeJob containing N many records
   * `rake analytics:cache_current_analytics`
-      - Caches analytics information for faster retrieval 
+      - Caches analytics information for faster retrieval
   * `rake mailers:send_assessments`
       - Send assessment reminders to non-reporting individuals
 
@@ -215,6 +215,10 @@ Setup the demonstration accounts and population:
 * Exit the container with `exit`
 
 The applications should be running on port 443 with Nginx proxying traffic between.
+
+## API
+
+See [API documentation](API.md) for more information.
 
 ## Testing
 

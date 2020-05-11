@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  use_doorkeeper
+
   if ADMIN_OPTIONS['report_mode']
     root to: 'assessments#landing'
   else
@@ -15,6 +17,17 @@ Rails.application.routes.draw do
     get 'users/edit', to: 'users/registrations#edit', as: :edit_user_registration
     put 'users', to: 'users/registrations#update', as: :user_registration
     get 'users/password_expired', to: 'users/registrations#password_expired', as: :user_password_expired
+  end
+
+  namespace :fhir, defaults: { format: :json } do
+    namespace :r4 do
+      get '/CapabilityStatement', to: 'api#capability_statement'
+      get '/:resource_type/:id', to: 'api#show'
+      put '/:resource_type/:id', to: 'api#update'
+      post '/:resource_type', to: 'api#create'
+      get '/:resource_type', to: 'api#search'
+      get '/Patient/:id/$everything', to: 'api#all'
+    end
   end
 
   resources :patients, only: [:index, :new, :create, :show, :edit, :update, :new_group_member]
