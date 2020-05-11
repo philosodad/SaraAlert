@@ -29,3 +29,8 @@
   border-top-width: 0px !important;
   border-bottom-width: 0px !important;
 }
+
+th.rotate > div {
+  writing-mode: vertical-rl;
+  transform: rotate(-180deg);
+}
