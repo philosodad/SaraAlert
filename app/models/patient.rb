@@ -3,7 +3,7 @@
 require 'chronic'
 
 # Patient: patient model
-class Patient < ApplicationRecord
+class Patient < ApplicationRecord # rubocop:todo Metrics/ClassLength
   include PatientHelper
 
   columns.each do |column|
@@ -499,11 +499,11 @@ class Patient < ApplicationRecord
     FHIR::Patient.new(
       meta: FHIR::Meta.new(lastUpdated: updated_at.strftime('%FT%T%:z')),
       id: id,
-      name: [ FHIR::HumanName.new( given: [first_name, middle_name].reject(&:blank?), family: last_name ) ],
+      name: [FHIR::HumanName.new(given: [first_name, middle_name].reject(&:blank?), family: last_name)],
       telecom: [
-        primary_telephone ? FHIR::ContactPoint.new( system: 'phone', value: primary_telephone, rank: 1 ) : nil,
-        secondary_telephone ? FHIR::ContactPoint.new( system: 'phone', value: secondary_telephone, rank: 2 ) : nil,
-        email ? FHIR::ContactPoint.new( system: 'email', value: email, rank: 1 ) : nil
+        primary_telephone ? FHIR::ContactPoint.new(system: 'phone', value: primary_telephone, rank: 1) : nil,
+        secondary_telephone ? FHIR::ContactPoint.new(system: 'phone', value: secondary_telephone, rank: 2) : nil,
+        email ? FHIR::ContactPoint.new(system: 'email', value: email, rank: 1) : nil
       ].reject(&:nil?),
       birthDate: date_of_birth&.strftime('%F'),
       address: [
@@ -517,7 +517,7 @@ class Patient < ApplicationRecord
       ],
       language: [
         language_coding(primary_language) ? FHIR::Patient::Communication.new(
-          language: FHIR::CodeableConcept.new( coding: [ language_coding(primary_language) ] ),
+          language: FHIR::CodeableConcept.new(coding: [language_coding(primary_language)]),
           preferred: interpretation_required
         ) : nil
       ].reject(&:nil?),
@@ -536,9 +536,9 @@ class Patient < ApplicationRecord
       first_name: patient&.name&.first&.given&.first,
       middle_name: patient&.name&.first&.given&.second,
       last_name: patient&.name&.first&.family,
-      primary_telephone: Phonelib.parse(patient&.telecom&.select{ |t| t&.system == 'phone' }&.first&.value, 'US').full_e164,
-      secondary_telephone: Phonelib.parse(patient&.telecom&.select{ |t| t&.system == 'phone' }&.second&.value, 'US').full_e164,
-      email: patient&.telecom&.select{ |t| t&.system == 'email' }&.first&.value,
+      primary_telephone: Phonelib.parse(patient&.telecom&.select { |t| t&.system == 'phone' }&.first&.value, 'US').full_e164,
+      secondary_telephone: Phonelib.parse(patient&.telecom&.select { |t| t&.system == 'phone' }&.second&.value, 'US').full_e164,
+      email: patient&.telecom&.select { |t| t&.system == 'email' }&.first&.value,
       date_of_birth: patient&.birthDate,
       address_line_1: patient&.address&.first&.line&.first,
       address_line_2: patient&.address&.first&.line&.second,
@@ -548,11 +548,11 @@ class Patient < ApplicationRecord
       address_zip: patient&.address&.first&.postalCode,
       primary_language: patient&.language&.first&.dig('language', 'coding')&.first&.dig('display'),
       interpretation_required: patient&.language&.first&.dig('preferred'),
-      white: PatientHelper.has_race_code(patient, '2106-3'),
-      black_or_african_american: PatientHelper.has_race_code(patient, '2054-5'),
-      american_indian_or_alaska_native: PatientHelper.has_race_code(patient, '1002-5'),
-      asian: PatientHelper.has_race_code(patient, '2028-9'),
-      native_hawaiian_or_other_pacific_islander: PatientHelper.has_race_code(patient, '2076-8'),
+      white: PatientHelper.race_code?(patient, '2106-3'),
+      black_or_african_american: PatientHelper.race_code?(patient, '2054-5'),
+      american_indian_or_alaska_native: PatientHelper.race_code?(patient, '1002-5'),
+      asian: PatientHelper.race_code?(patient, '2028-9'),
+      native_hawaiian_or_other_pacific_islander: PatientHelper.race_code?(patient, '2076-8'),
       ethnicity: PatientHelper.ethnicity(patient),
       sex: PatientHelper.birthsex(patient)
     }

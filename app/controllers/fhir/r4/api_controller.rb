@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+
+# ApiController: API for interacting with Sara Alert
 class Fhir::R4::ApiController < ActionController::API
   include ActionController::MimeResponds
   before_action :doorkeeper_authorize!, except: [:capability_statement]
@@ -84,24 +87,23 @@ class Fhir::R4::ApiController < ActionController::API
       resource.submission_token = SecureRandom.hex(20) # 160 bits
     end
 
-    # Try to save the resource
-    if resource.nil? || !resource.save
-      status_bad_request && return
-    else
-      if resource_type == 'patient'
-        # Send enrollment notification
-        resource.send_enrollment_notification
+    status_bad_request && return if resource.nil?
 
-        # Create a history for the enrollment
-        history = History.new
-        history.created_by = current_resource_owner.email
-        history.comment = 'User enrolled monitoree.'
-        history.patient = resource
-        history.history_type = 'Enrollment'
-        history.save
-      end
-      status_created(resource.as_fhir)
+    status_bad_request && return unless resource.save
+
+    if resource_type == 'patient'
+      # Send enrollment notification
+      resource.send_enrollment_notification
+
+      # Create a history for the enrollment
+      history = History.new
+      history.created_by = current_resource_owner.email
+      history.comment = 'User enrolled monitoree.'
+      history.patient = resource
+      history.history_type = 'Enrollment'
+      history.save
     end
+    status_created(resource.as_fhir)
   end
 
   # Return a FHIR Bundle containing results that match the given query.
@@ -171,7 +173,7 @@ class Fhir::R4::ApiController < ActionController::API
         description: 'Sara Alert API'
       ),
       fhirVersion: '4.0.1',
-      format: ['xml', 'json'],
+      format: %w[xml json],
       rest: FHIR::CapabilityStatement::Rest.new(
         mode: 'server',
         security: FHIR::CapabilityStatement::Rest::Security.new(
@@ -278,7 +280,7 @@ class Fhir::R4::ApiController < ActionController::API
         query = query.where('email like ?', "#{search}%")
       end
     end
-    query.collect { |p| p.as_fhir }
+    query.collect(&:as_fhir)
   end
 
   # Get a lab result by id
@@ -292,7 +294,7 @@ class Fhir::R4::ApiController < ActionController::API
   end
 
   # Construct a full url via a request and resource
-  def full_url_helper(request, resource)
+  def full_url_helper(_request, resource)
     "#{root_url}fhir/r4/#{resource.class.name.split('::').last}/#{resource.id}"
   end
 

@@ -29,8 +29,8 @@ gem 'ancestry'
 gem 'devise'
 gem 'devise-authy'
 gem 'devise-security'
-gem 'rolify'
 gem 'doorkeeper'
+gem 'rolify'
 
 # Better React integration
 gem 'react-rails'

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'test_helper'
 
 class ApiControllerTest < ActionDispatch::IntegrationTest
@@ -6,8 +8,8 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = User.find_by(email: 'state1_epi@example.com')
     @token = Doorkeeper::AccessToken.create(resource_owner_id: @user.id)
-    @patient1 = Patient.find_by(id: 1).as_fhir
-    @patient2 = Patient.find_by(id: 2).as_fhir
+    @patient_1 = Patient.find_by(id: 1).as_fhir
+    @patient_2 = Patient.find_by(id: 2).as_fhir
   end
 
   test 'should be unauthorized via show' do
@@ -58,14 +60,13 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-
   test 'should be unauthorized via create' do
     post '/fhir/r4/Patient'
     assert_response :unauthorized
   end
 
   test 'should create Patient via create' do
-    post '/fhir/r4/Patient', params: @patient1.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
+    post '/fhir/r4/Patient', params: @patient_1.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :created
     json_response = JSON.parse(response.body)
     id = json_response['id']
@@ -91,7 +92,7 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
   end
 
   test 'should update Patient via update' do
-    put '/fhir/r4/Patient/1', params: @patient2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
+    put '/fhir/r4/Patient/1', params: @patient_2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :ok
     json_response = JSON.parse(response.body)
     assert_equal 1, json_response['id']
@@ -108,12 +109,12 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
   end
 
   test 'should be bad request via update due to bad resource' do
-    put '/fhir/r4/FooBar/9', params: @patient2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
+    put '/fhir/r4/FooBar/9', params: @patient_2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :bad_request
   end
 
   test 'should be forbidden via update' do
-    put '/fhir/r4/Patient/9', params: @patient2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
+    put '/fhir/r4/Patient/9', params: @patient_2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :forbidden
   end
 
@@ -182,11 +183,10 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(response.body)
     assert_equal 'Bundle', json_response['resourceType']
     assert_equal 5, json_response['total']
-    assert_equal 1, json_response['entry'].filter{ |e| e['resource']['resourceType'] == 'Patient' }.count
-    assert_equal 2, json_response['entry'].filter{ |e| e['resource']['resourceType'] == 'QuestionnaireResponse' }.count
-    assert_equal 2, json_response['entry'].filter{ |e| e['resource']['resourceType'] == 'Observation' }.count
-    assert_equal 'Patient/1', json_response['entry'].filter{ |e| e['resource']['resourceType'] == 'Observation' }.first['resource']['subject']['reference']
-    assert_equal 'Patient/1', json_response['entry'].filter{ |e| e['resource']['resourceType'] == 'QuestionnaireResponse' }.first['resource']['subject']['reference']
+    assert_equal 1, json_response['entry'].filter { |e| e['resource']['resourceType'] == 'Patient' }.count
+    assert_equal 2, json_response['entry'].filter { |e| e['resource']['resourceType'] == 'QuestionnaireResponse' }.count
+    assert_equal 2, json_response['entry'].filter { |e| e['resource']['resourceType'] == 'Observation' }.count
+    assert_equal 'Patient/1', json_response['entry'].filter { |e| e['resource']['resourceType'] == 'Observation' }.first['resource']['subject']['reference']
     assert_equal 1, json_response['entry'].first['resource']['id']
   end
 
