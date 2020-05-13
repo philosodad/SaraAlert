@@ -102,8 +102,13 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     assert_equal 'Kirlin44', json_response['name'].first['family']
   end
 
-  test 'should be bad request via update' do
+  test 'should be bad request via update due to bad fhir' do
     put '/fhir/r4/Patient/1', params: { foo: 'bar' }.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
+    assert_response :bad_request
+  end
+
+  test 'should be bad request via update due to bad resource' do
+    put '/fhir/r4/FooBar/9', params: @patient2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :bad_request
   end
 
@@ -111,7 +116,6 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
     put '/fhir/r4/Patient/9', params: @patient2.to_json, headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :forbidden
   end
-
 
   test 'should be unauthorized via search' do
     get '/fhir/r4/Patient?family=Kirlin44'
@@ -193,14 +197,15 @@ class ApiControllerTest < ActionDispatch::IntegrationTest
 
   test 'should get CapabilityStatement unauthorized via capability_statement' do
     get '/fhir/r4/CapabilityStatement'
-    json_response = JSON.parse(response.body)
     assert_response :ok
+    json_response = JSON.parse(response.body)
     assert_equal ADMIN_OPTIONS['version'], json_response['software']['version']
   end
 
   test 'should get CapabilityStatement authorized via capability_statement' do
     get '/fhir/r4/CapabilityStatement', headers: { 'Authorization': "Bearer #{@token.token}" }
     assert_response :ok
+    json_response = JSON.parse(response.body)
     assert_equal ADMIN_OPTIONS['version'], json_response['software']['version']
   end
 end

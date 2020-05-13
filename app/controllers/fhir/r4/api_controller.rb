@@ -41,6 +41,8 @@ class Fhir::R4::ApiController < ActionController::API
     when 'patient'
       updates = Patient.from_fhir(contents)
       resource = get_patient(params.permit(:id)[:id])
+    else
+      status_bad_request && return
     end
 
     status_forbidden && return if resource.nil?
