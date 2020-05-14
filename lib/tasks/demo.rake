@@ -146,60 +146,57 @@ namespace :demo do
       printf("Simulating day #{day + 1} (#{today}):\n")
 
       # Transaction speeds things up a bit
-      Patient.transaction do
-      
+      Assessment.transaction do
         # Create assessments for 80-90% of patients on any given day
         printf("Generating assessments...")
         patients = Patient.where('created_at <= ?', today)
-        patient_ids_assessment = patients.pluck(:id).sample(patients.count * rand(80..90) / 100)
-        pcount_assessment = patient_ids_assessment.length
-        Patient.find(patient_ids_assessment).each_with_index do |patient, index|
-          next if patient.assessments.any? { |a| a.created_at.to_date == today }
-          printf("\rGenerating assessment #{index+1} of #{pcount_assessment}...")
-          reported_condition = patient.jurisdiction.hierarchical_condition_unpopulated_symptoms
-          assessment = Assessment.new
-          if rand < 0.3 # 30% report some sort of symptoms
+          patient_ids_assessment = patients.pluck(:id).sample(patients.count * rand(80..90) / 100)
+          Patient.find(patient_ids_assessment).each_with_index do |patient, index|
+            next if patient.assessments.any? { |a| a.created_at.to_date == today }
+            printf("\rGenerating assessment #{index+1} of #{patient_ids_assessment.length}...")
+            reported_condition = patient.jurisdiction.hierarchical_condition_unpopulated_symptoms
             bool_symps = reported_condition.symptoms.select {|s| s.type == "BoolSymptom" }
-            number_of_symptoms = rand(bool_symps.count) + 1
-            bool_symps.each do |symp|  symp['bool_value'] = false end
-            bool_symps.shuffle[0,number_of_symptoms].each do |symp| symp['bool_value'] = true end
-            assessment.update(reported_condition: reported_condition, created_at: Faker::Time.between_dates(from: today, to: today, period: :day))
-            # Outside the context of the demo script, an assessment would already have a threshold condition saved to check the symptomatic status
-            # We'll compensate for that here by just re-updating
-            assessment.update(symptomatic: assessment.symptomatic?)
-            patient.assessments << assessment
-            patient.save
-          else
-            bool_symps = reported_condition.symptoms.select {|s| s.type == "BoolSymptom" }
-            bool_symps.each do |symp|  symp['bool_value'] = false end
-            assessment.update(reported_condition: reported_condition, symptomatic: false, created_at: Faker::Time.between_dates(from: today, to: today, period: :day))
+            bool_symps.each do |symp| symp['bool_value'] = false end
+            assessment = Assessment.new(
+              patient_id: patient.id,
+              reported_condition: reported_condition,
+              created_at: Faker::Time.between_dates(from: today, to: today, period: :day),
+              symptomatic: false
+            )
             assessment.save
-            patient.assessments << assessment
-            patient.save
+            if rand < 0.3 # 30% report some sort of symptoms
+              number_of_symptoms = rand(bool_symps.count) + 1
+              bool_symps.shuffle[0,number_of_symptoms].each do |symp| symp['bool_value'] = true end
+              # Outside the context of the demo script, an assessment would already have a threshold condition saved to check the symptomatic status
+              # We'll compensate for that here by just re-updating
+              assessment.update(symptomatic: assessment.symptomatic?)
+              patient.refresh_symptom_onset(assessment.id)
+            end
           end
-          patient.refresh_symptom_onset(assessment.id)
-        end
         printf(" done.\n")
+      end
 
+      Laboratory.transaction do
         # Create laboratories for 10-20% of isolation patients on any given day
         printf("Generating laboratories...")
         isol_patients = Patient.where(isolation: true).where('created_at <= ?', today)
         patient_ids_lab = isol_patients.pluck(:id).sample(isol_patients.count * rand(10..20) / 100)
-        pcount_lab = patient_ids_lab.length
-        Patient.find(patient_ids_lab).each_with_index do |patient, index|
-          printf("\rGenerating laboratory #{index+1} of #{pcount_lab}...")
+        patient_ids_lab.each_with_index do |patient_id, index|
+          printf("\rGenerating laboratory #{index+1} of #{patient_ids_lab.length}...")
           report_date = Faker::Time.between_dates(from: 1.week.ago, to: today, period: :day)
           lab = Laboratory.new(
+            patient_id: patient_id,
             lab_type: ['PCR', 'Antigen', 'IgG Antibody', 'IgM Antibody', 'IgA Antibody'].sample,
             specimen_collection: Faker::Time.between_dates(from: 2.weeks.ago, to: report_date, period: :day),
             report: report_date,
             result: ['positive', 'negative', 'indeterminate', 'other'].sample
           )
-          patient.laboratories << lab
-          patient.save
+          lab.save
         end
         printf(" done.\n")
+      end
 
+      Patient.transaction do
         # Create count patients
         count.times do |i|
           printf("\rGenerating monitoree #{i+1} of #{count}...")
@@ -341,7 +338,6 @@ namespace :demo do
           end
           printf(" done.\n")
         end
-
       end
       printf("\n")
     end
